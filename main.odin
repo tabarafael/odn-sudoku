@@ -1,12 +1,16 @@
 #+feature dynamic-literals
+// remove dynamics
 package main
 import "core:bytes"
 import "core:fmt"
-import "core:math"
+import "core:log"
 import "core:math/rand"
-import "core:strconv"
-import "core:strings"
+import "core:mem"
 import "core:time"
+
+SUDOKU_SIZE :: 9
+SIZE :: 3
+_ :: mem
 
 // TB_3 :: [3][3][3][3]int {
 // 	{
@@ -25,58 +29,80 @@ import "core:time"
 // 		{{3, 2, 8}, {5, 6, 1}, {7, 4, 9}},
 // 	},
 // }
-bad_row :: struct {
-	message: string,
-	value:   int,
+Error :: union #shared_nil {
+	Error_1,
+	Error_2,
 }
-bad_column :: struct {
-	message: string,
-	value:   int,
-}
-bad_quadrant :: struct {
-	message: string,
-	value:   int,
-}
-Error :: union {
+Error_1 :: enum {
+	none,
 	bad_row,
 	bad_column,
 	bad_quadrant,
 }
+Error_2 :: enum {
+	none,
+	eseese,
+}
+
+Logger_Opts :: log.Options{.Level, .Terminal_Color} | log.Full_Timestamp_Opts
 
 main :: proc() {
 	// later we can run with many different sizes
-	do_magic(3)
+	logger := log.create_console_logger(opt = Logger_Opts)
+	defer log.destroy_console_logger(logger)
+	context.logger = logger
 
+	when ODIN_DEBUG {
+		track: mem.Tracking_Allocator
+		mem.tracking_allocator_init(&track, context.allocator)
+
+		context.allocator = mem.tracking_allocator(&track)
+		defer {
+			if len(track.allocation_map) > 0 {
+				fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+				for _, entry in track.allocation_map {
+					fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+				}
+			}
+			mem.tracking_allocator_destroy(&track)
+		}
+	}
+
+	do_magic(3)
 }
+
 do_magic :: proc(size: int) {
 	v := create_vector()
-	if r, err := verify_vector(v, 3); !r {
+	if err := verify_vector(v, 3); err != .none {
 		fmt.println(err)
 	}
 }
 
 create_vector :: proc() -> [3][3][3][3]int {
-	rounds: int = 0
 	full_backoff: for {
 		full_backoff_lock: int = 500
-		size :: 3
-		v := [size][size][size][size]int{}
-		column_bag: [3][3][dynamic]int
-		quadrant_bag: [3][3][dynamic]int
+		v := [SIZE][SIZE][SIZE][SIZE]int{}
+		column_bag: [SIZE][SIZE][SUDOKU_SIZE]int
+		quadrant_bag: [SIZE][SIZE][SUDOKU_SIZE]int
+		size_column_bag: [SIZE][SIZE]int
+		size_quadrant_bag: [SIZE][SIZE]int
 
-		loop_line_x: for x := 0; x < size; x += 1 {
-			loop_line_y: for y := 0; y < size; y += 1 {
-				bag := new_bag(9)
+		loop_line_x: for x := 0; x < SIZE; x += 1 {
+			loop_line_y: for y := 0; y < SIZE; y += 1 {
+				log.info("resetting bags")
 				savepoint_v := v
+				bag, size_bag := new_bag()
 				savepoint_column_bag := column_bag
 				savepoint_quadrant_bag := quadrant_bag
+				savepoint_size_column_bag := size_column_bag
+				savepoint_size_quadrant_bag := size_quadrant_bag
 
-				loop_line_a: for a := 0; a < size; a += 1 {
-					loop_line_b: for b := 0; b < size; b += 1 {
-						loop_lock := size * size + 1
-
+				loop_line_a: for a := 0; a < SIZE; a += 1 {
+					loop_line_b: for b := 0; b < SIZE; b += 1 {
+						loop_lock := SUDOKU_SIZE + 1
 						loop_over_bag: for {
-							rounds += 1
+							// time.sleep(time.Second * 1)
+							log.info("inside loop over bag")
 							if full_backoff_lock < 1 {
 								fmt.println("engaging full backoff")
 								continue full_backoff
@@ -86,27 +112,29 @@ create_vector :: proc() -> [3][3][3][3]int {
 								column_bag = savepoint_column_bag
 								quadrant_bag = savepoint_quadrant_bag
 								y -= 1 // give back the round
+
 								continue loop_line_y // jump way back
 							}
 
-							add := pop_front(&bag)
+							log.info(bag)
+							add := pop_front(&bag, &size_bag)
 							for stashed in column_bag[a][b] {
 								if add == stashed {
 									loop_lock -= 1
-									append(&bag, add)
+									append(&bag, &add, &size_bag)
 									continue loop_over_bag
 								}
 							}
 							for stashed in quadrant_bag[x][a] {
 								if add == stashed {
 									loop_lock -= 1
-									append(&bag, add)
+									append(&bag, &add, &size_bag)
 									continue loop_over_bag
 								}
 							}
 							v[x][y][a][b] = add
-							append(&column_bag[a][b], add)
-							append(&quadrant_bag[x][a], add)
+							append(&column_bag[a][b], &add, &size_column_bag[a][b])
+							append(&quadrant_bag[x][a], &add, &size_quadrant_bag[x][a])
 							continue loop_line_b
 						}
 					}
@@ -114,67 +142,36 @@ create_vector :: proc() -> [3][3][3][3]int {
 			}
 		}
 
-		fmt.println("rounds:", rounds)
 		print_array(v)
 		return v
 	}
 }
 
-// creating a tetris bag
-new_bag :: proc(size: int) -> [dynamic]int {
-	b: [dynamic]int
-	for x in 1 ..= size {
-		append(&b, x)
-	}
-	// fisher yates shuffle
-	for i := size - 1; i > 0; i -= 1 {
-		j: int = int(rand.int31()) % size
-		b[i], b[j] = b[j], b[i]
-	}
-	return b
-}
+
 /*
 
 here on are sudoku checker
 
 */
 // verifies a 4 dimentional vector against the rules
-verify_vector :: proc(vector: [3][3][3][3]int, vector_size: int) -> (bool, Error) {
+verify_vector :: proc(vector: [3][3][3][3]int, vector_size: int) -> Error_1 {
 	expected_sum := get_triangule_number(vector_size)
 	for v1 in 0 ..< vector_size {
 		for v2 in 0 ..< vector_size {
 			create_vecton :: proc() -> [3][3][3][3]int
 
 			if got_sum := get_sum_a_b(vector, v1, v2); got_sum != expected_sum {
-				buf: [4]byte
-				return false, bad_row {
-					message = strings.concatenate(
-						{"bad row=", strconv.itoa(buf[:], v1 + (v2 * vector_size) + 1)},
-					),
-					value = got_sum,
-				}
+				return .bad_row
 			}
 			if got_sum := get_sum_x_y(vector, v1, v2); got_sum != expected_sum {
-				buf: [4]byte
-				return false, bad_column {
-					message = strings.concatenate(
-						{"bad column=", strconv.itoa(buf[:], v1 + (v2 * vector_size) + 1)},
-					),
-					value = got_sum,
-				}
+				return .bad_column
 			}
 			if got_sum := get_sum_y_b(vector, v1, v2); got_sum != expected_sum {
-				buf: [4]byte
-				return false, bad_quadrant {
-					message = strings.concatenate(
-						{"bad quadrant=", strconv.itoa(buf[:], v1 + (v2 * vector_size) + 1)},
-					),
-					value = got_sum,
-				}
+				return .bad_quadrant
 			}
 		}
 	}
-	return true, nil
+	return nil
 }
 
 get_triangule_number :: proc(n: int) -> int {
@@ -217,4 +214,43 @@ print_array :: proc(arr: [3][3][3][3]int, depth: int = 0) {
 	for x in arr {fmt.println("")
 		for y in x {fmt.println(y)}
 	}
+}
+
+// array manipulation
+
+// very crude append
+append :: proc(array: ^[SUDOKU_SIZE]int, value: ^int, size: ^int) #no_bounds_check {
+	log.info("append size:", size^, "value:", value^)
+	log.info(array)
+	array^[size^] = value^
+	size^ += 1
+	log.info(array)
+}
+
+//very unsafe pop
+pop_front :: proc(array: ^[SUDOKU_SIZE]int, size: ^int) -> (result: int) #no_bounds_check {
+	// log.info("pop front- size:", size^)
+	// log.info(array)
+	result = array[0]
+	if size^ > 1 {
+		copy(array[0:], array[1:])
+	}
+	size^ -= 1
+	array[size^] = 0
+	// log.info(array)
+	return
+}
+
+// creating a tetris bag
+new_bag :: proc() -> (b: [SUDOKU_SIZE]int, size: int = SUDOKU_SIZE) #no_bounds_check {
+	#unroll for x in 0 ..< SUDOKU_SIZE {
+		b[x] = x + 1
+	}
+	// fisher yates shuffle
+	// it is backwards on purpose, and also doesn't act on the index 0
+	for i := SUDOKU_SIZE - 1; i > 0; i -= 1 {
+		j: int = int(rand.int31()) % SUDOKU_SIZE
+		b[i], b[j] = b[j], b[i]
+	}
+	return
 }
