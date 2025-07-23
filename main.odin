@@ -2,22 +2,10 @@ package main
 
 import "core:fmt"
 import "core:mem"
-import "core:time"
 
 SUDOKU_SIZE :: 9
 SIDE_SIZE :: 3
 _ :: mem
-
-Error :: union #shared_nil {
-	Error_1,
-}
-
-Error_1 :: enum {
-	none,
-	bad_row,
-	bad_column,
-	bad_quadrant,
-}
 
 main :: proc() {
 	when ODIN_DEBUG {
@@ -36,42 +24,33 @@ main :: proc() {
 		}
 	}
 
-	do_magic(3)
+	sudoku_create()
 }
 
-do_magic :: proc(size: int) {
-	v := create_vector()
-	if err := sudoku_validate(v, 3); err != .none {
-		fmt.println(err)
-	}
-}
-
-create_vector :: proc() -> [3][3][3][3]int {
+sudoku_create :: proc() #no_bounds_check {
 	full_backoff: for {
-		full_backoff_lock: int = 500
-		v := [SIDE_SIZE][SIDE_SIZE][SIDE_SIZE][SIDE_SIZE]int{} // remove this V later
+		full_backoff_lock: int = 10 // could use some fine tuning
 		column_bag: [SIDE_SIZE][SIDE_SIZE]Bag
 		quadrant_bag: [SIDE_SIZE][SIDE_SIZE]Bag
 
 		loop_line_x: for x := 0; x < SIDE_SIZE; x += 1 {
 			loop_line_y: for y := 0; y < SIDE_SIZE; y += 1 {
-				// log.info("resetting bags")
-				savepoint_v := v
+
 				bag := bag_new()
 				savepoint_column_bag := column_bag
 				savepoint_quadrant_bag := quadrant_bag
 
 				loop_line_a: for a := 0; a < SIDE_SIZE; a += 1 {
 					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
-						loop_lock := SUDOKU_SIZE + 1
+						loop_lock := SUDOKU_SIZE + 1 // magic, that's it
 						loop_over_bag: for {
-							full_backoff_lock -= 1
-							if full_backoff_lock < 1 {
-								fmt.println("engaging full backoff")
-								continue full_backoff
-							}
+
 							if loop_lock < 1 {
-								v = savepoint_v
+								full_backoff_lock -= 1
+								if full_backoff_lock < 1 {
+									fmt.eprintln("engaging full backoff")
+									continue full_backoff
+								}
 								column_bag = savepoint_column_bag
 								quadrant_bag = savepoint_quadrant_bag
 								y -= 1 // give back the round
@@ -94,7 +73,6 @@ create_vector :: proc() -> [3][3][3][3]int {
 									continue loop_over_bag
 								}
 							}
-							v[x][y][a][b] = add
 							bag_append(&column_bag[a][b], &add)
 							bag_append(&quadrant_bag[x][a], &add)
 							continue loop_line_b
@@ -104,7 +82,15 @@ create_vector :: proc() -> [3][3][3][3]int {
 			}
 		}
 
-		print_array(v)
-		return v
+		print_sudoku(column_bag)
+		break
+	}
+}
+
+print_sudoku :: proc(bag: [3][3]Bag) #no_bounds_check {
+	#unroll for k in 0 ..< 3 {
+		#unroll for i in 0 ..< 3 {
+			fmt.println(bag[k][i].array)
+		}
 	}
 }
