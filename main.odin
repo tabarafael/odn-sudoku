@@ -42,21 +42,7 @@ sudoku_create :: proc() #no_bounds_check {
 
 				loop_line_a: for a := 0; a < SIDE_SIZE; a += 1 {
 					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
-						loop_lock := SUDOKU_SIZE + 1 // magic, that's it
-						loop_over_bag: for {
-
-							if loop_lock < 1 {
-								full_backoff_lock -= 1
-								if full_backoff_lock < 1 {
-									fmt.eprintln("engaging full backoff")
-									continue full_backoff
-								}
-								column_bag = savepoint_column_bag
-								quadrant_bag = savepoint_quadrant_bag
-								y -= 1 // give back the round
-
-								continue loop_line_y // jump way back
-							}
+						loop_over_bag: for loop_lock := SUDOKU_SIZE + 1; loop_lock >= 1; {
 
 							for stashed in column_bag[a][b].array {
 								if bag.array[0] == stashed {
@@ -77,6 +63,16 @@ sudoku_create :: proc() #no_bounds_check {
 							bag_append(&quadrant_bag[x][a], &add)
 							continue loop_line_b
 						}
+						full_backoff_lock -= 1
+						if full_backoff_lock < 1 {
+							fmt.eprintln("engaging full backoff")
+							continue full_backoff
+						}
+						column_bag = savepoint_column_bag
+						quadrant_bag = savepoint_quadrant_bag
+						y -= 1 // give back the round
+
+						continue loop_line_y // jump way back
 					}
 				}
 			}
