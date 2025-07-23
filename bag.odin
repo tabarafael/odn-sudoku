@@ -7,18 +7,20 @@ Bag :: struct {
 }
 
 // creating a tetris bag
-bag_new :: proc() -> (b: Bag) #no_bounds_check {
-	#unroll for x in 0 ..< SUDOKU_SIZE {
-		b.array[x] = u8(x + 1)
+bag_new :: proc() -> Bag #no_bounds_check {
+	b := Bag {
+		array = {1, 2, 3, 4, 5, 6, 7, 8, 9},
+		size  = SUDOKU_SIZE, // created full
 	}
+
 	// fisher yates shuffle
 	// it is backwards on purpose, and also doesn't act on the index 0
-	for i := SUDOKU_SIZE - 1; i > 0; i -= 1 {
-		j: int = int(rand.int31()) % SUDOKU_SIZE
+	#no_bounds_check for i := SUDOKU_SIZE - 1; i > 1; i -= 1 {
+		j: int = int(rand.int31()) % i
 		b.array[i], b.array[j] = b.array[j], b.array[i]
 	}
-	b.size = SUDOKU_SIZE // created full
-	return
+	b.array[1], b.array[0] = b.array[0], b.array[1]
+	return b
 }
 
 // very crude append
