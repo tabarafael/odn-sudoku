@@ -1,29 +1,11 @@
 package main
 
 import "core:fmt"
-import "core:mem"
 
 SUDOKU_SIZE :: 9
 SIDE_SIZE :: 3
-_ :: mem
 
 main :: proc() {
-	when ODIN_DEBUG {
-		track: mem.Tracking_Allocator
-		mem.tracking_allocator_init(&track, context.allocator)
-
-		context.allocator = mem.tracking_allocator(&track)
-		defer {
-			if len(track.allocation_map) > 0 {
-				fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
-				for _, entry in track.allocation_map {
-					fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
-				}
-			}
-			mem.tracking_allocator_destroy(&track)
-		}
-	}
-
 	sudoku_create()
 }
 
@@ -69,7 +51,6 @@ sudoku_create :: proc() #no_bounds_check {
 						}
 						full_backoff_lock -= 1
 						if full_backoff_lock < 1 {
-							fmt.eprintln("engaging full backoff")
 							continue full_backoff
 						}
 						column_bag = savepoint_column_bag
