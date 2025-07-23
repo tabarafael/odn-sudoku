@@ -46,7 +46,7 @@ sudoku_create :: proc() #no_bounds_check {
 					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
 
 						// this loop will run until a legal value is found or xyab
-						loop_over_bag: for loop_lock := bag.size + 1; loop_lock >= 1; {
+						loop_over_bag: for loop_lock := bag.size; loop_lock >= 1; {
 
 							for index in 0 ..< column_bag[a][b].size {
 								if bag.array[0] == column_bag[a][b].array[index] {
