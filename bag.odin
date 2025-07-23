@@ -1,6 +1,5 @@
 package main
 import "core:math/rand"
-
 Bag :: struct {
 	size:  u8,
 	array: [SUDOKU_SIZE]u8,
@@ -15,11 +14,11 @@ bag_new :: proc() -> Bag #no_bounds_check {
 
 	// fisher yates shuffle
 	// it is backwards on purpose, and also doesn't act on the index 0
+	// because the last switch will always be mod(0) either way
 	#no_bounds_check for i := SUDOKU_SIZE - 1; i > 1; i -= 1 {
 		j: int = int(rand.int31()) % i
 		b.array[i], b.array[j] = b.array[j], b.array[i]
 	}
-	b.array[1], b.array[0] = b.array[0], b.array[1]
 	return b
 }
 
