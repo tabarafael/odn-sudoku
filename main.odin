@@ -33,6 +33,7 @@ sudoku_create :: proc() #no_bounds_check {
 		column_bag: [SIDE_SIZE][SIDE_SIZE]Bag
 		quadrant_bag: [SIDE_SIZE][SIDE_SIZE]Bag
 
+		// loops x and y are the index of the lines
 		loop_line_x: for x := 0; x < SIDE_SIZE; x += 1 {
 			loop_line_y: for y := 0; y < SIDE_SIZE; y += 1 {
 
@@ -40,9 +41,12 @@ sudoku_create :: proc() #no_bounds_check {
 				savepoint_column_bag := column_bag
 				savepoint_quadrant_bag := quadrant_bag
 
+				// loops a and b are the index of the columns
 				loop_line_a: for a := 0; a < SIDE_SIZE; a += 1 {
 					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
-						loop_over_bag: for loop_lock := SUDOKU_SIZE + 1; loop_lock >= 1; {
+
+						// this loop will run until a legal value is found or xyab
+						loop_over_bag: for loop_lock := bag.size + 1; loop_lock >= 1; {
 
 							for index in 0 ..< column_bag[a][b].size {
 								if bag.array[0] == column_bag[a][b].array[index] {
