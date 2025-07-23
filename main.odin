@@ -44,15 +44,15 @@ sudoku_create :: proc() #no_bounds_check {
 					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
 						loop_over_bag: for loop_lock := SUDOKU_SIZE + 1; loop_lock >= 1; {
 
-							for stashed in column_bag[a][b].array {
-								if bag.array[0] == stashed {
+							for index in 0 ..< column_bag[a][b].size {
+								if bag.array[0] == column_bag[a][b].array[index] {
 									loop_lock -= 1
 									bag_shuffle(&bag)
 									continue loop_over_bag
 								}
 							}
-							for stashed in quadrant_bag[x][a].array {
-								if bag.array[0] == stashed {
+							for index in 0 ..< quadrant_bag[x][a].size {
+								if bag.array[0] == quadrant_bag[x][a].array[index] {
 									loop_lock -= 1
 									bag_shuffle(&bag)
 									continue loop_over_bag
