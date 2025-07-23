@@ -1,7 +1,6 @@
 package main
 
 import "core:fmt"
-import "core:math/rand"
 
 // verifies a 4 dimentional vector against the sudoku rules
 sudoku_validate :: proc(vector: [3][3][3][3]int, vector_size: int) -> Error_1 {
@@ -61,24 +60,8 @@ get_triangule_number :: proc(n: int) -> int {
 	return t * (t + 1) / 2
 }
 
-
 print_array :: proc(arr: [3][3][3][3]int, depth: int = 0) {
 	for x in arr {fmt.println("")
 		for y in x {fmt.println(y)}
 	}
-}
-
-// creating a tetris bag
-bag_new :: proc() -> (b: Bag) #no_bounds_check {
-	#unroll for x in 0 ..< SUDOKU_SIZE {
-		b.array[x] = x + 1
-	}
-	// fisher yates shuffle
-	// it is backwards on purpose, and also doesn't act on the index 0
-	for i := SUDOKU_SIZE - 1; i > 0; i -= 1 {
-		j: int = int(rand.int31()) % SUDOKU_SIZE
-		b.array[i], b.array[j] = b.array[j], b.array[i]
-	}
-	b.size = SUDOKU_SIZE // created full
-	return
 }

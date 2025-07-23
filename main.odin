@@ -1,9 +1,6 @@
-#+feature dynamic-literals
-// remove dynamics
 package main
-import "core:bytes"
+
 import "core:fmt"
-import "core:log"
 import "core:mem"
 import "core:time"
 
@@ -22,14 +19,7 @@ Error_1 :: enum {
 	bad_quadrant,
 }
 
-Logger_Opts :: log.Options{.Level, .Terminal_Color} | log.Full_Timestamp_Opts
-
 main :: proc() {
-	// later we can run with many different sizes
-	logger := log.create_console_logger(opt = Logger_Opts)
-	defer log.destroy_console_logger(logger)
-	context.logger = logger
-
 	when ODIN_DEBUG {
 		track: mem.Tracking_Allocator
 		mem.tracking_allocator_init(&track, context.allocator)
@@ -65,7 +55,7 @@ create_vector :: proc() -> [3][3][3][3]int {
 
 		loop_line_x: for x := 0; x < SIDE_SIZE; x += 1 {
 			loop_line_y: for y := 0; y < SIDE_SIZE; y += 1 {
-				log.info("resetting bags")
+				// log.info("resetting bags")
 				savepoint_v := v
 				bag := bag_new()
 				savepoint_column_bag := column_bag
@@ -75,8 +65,7 @@ create_vector :: proc() -> [3][3][3][3]int {
 					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
 						loop_lock := SUDOKU_SIZE + 1
 						loop_over_bag: for {
-							// time.sleep(time.Second * 1)
-							log.info("inside loop over bag")
+							full_backoff_lock -= 1
 							if full_backoff_lock < 1 {
 								fmt.println("engaging full backoff")
 								continue full_backoff
@@ -90,7 +79,6 @@ create_vector :: proc() -> [3][3][3][3]int {
 								continue loop_line_y // jump way back
 							}
 
-							log.info(bag)
 							add := bag_pop_front(&bag)
 							for stashed in column_bag[a][b].array {
 								if add == stashed {
