@@ -49,10 +49,19 @@ sudoku_create :: proc() #no_bounds_check {
 							bag_append(&quadrant_bag[x][a], &add)
 							continue loop_line_b
 						}
+						// if the loop_lock is empty, that should mean we tried
+						// all possible conbinations of that bag
+						// so we go bag to retry another permutation
 						full_backoff_lock -= 1
 						if full_backoff_lock < 1 {
+							// each retry, we give the full_backoff_lock another try
+							// after so many retries, we might have an impossible to complete
+							// board, so we need to start from zero again
 							continue full_backoff
 						}
+
+						// load the savepoints so that no change during this iteration
+						// affects the next one
 						column_bag = savepoint_column_bag
 						quadrant_bag = savepoint_quadrant_bag
 						y -= 1 // give back the round
