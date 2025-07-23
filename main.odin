@@ -58,21 +58,21 @@ sudoku_create :: proc() #no_bounds_check {
 								continue loop_line_y // jump way back
 							}
 
-							add := bag_pop_front(&bag)
 							for stashed in column_bag[a][b].array {
-								if add == stashed {
+								if bag.array[0] == stashed {
 									loop_lock -= 1
-									bag_append(&bag, &add)
+									bag_shuffle(&bag)
 									continue loop_over_bag
 								}
 							}
 							for stashed in quadrant_bag[x][a].array {
-								if add == stashed {
+								if bag.array[0] == stashed {
 									loop_lock -= 1
-									bag_append(&bag, &add)
+									bag_shuffle(&bag)
 									continue loop_over_bag
 								}
 							}
+							add := bag_pop_front(&bag)
 							bag_append(&column_bag[a][b], &add)
 							bag_append(&quadrant_bag[x][a], &add)
 							continue loop_line_b
@@ -82,7 +82,7 @@ sudoku_create :: proc() #no_bounds_check {
 			}
 		}
 
-		print_sudoku(column_bag)
+		#force_inline print_sudoku(column_bag)
 		break
 	}
 }
