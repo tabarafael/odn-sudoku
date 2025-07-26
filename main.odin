@@ -2,8 +2,7 @@ package main
 
 import "core:fmt"
 
-SUDOKU_SIZE :: 9
-SIDE_SIZE :: 3
+SIDE :: 3
 
 main :: proc() {
 	sudoku_create()
@@ -12,20 +11,20 @@ main :: proc() {
 sudoku_create :: proc() #no_bounds_check {
 	full_backoff: for {
 		full_backoff_lock: int = 10 // could use some fine tuning
-		column_bag: [SIDE_SIZE][SIDE_SIZE]Bag
-		quadrant_bag: [SIDE_SIZE][SIDE_SIZE]Bag
+		column_bag: [SIDE][SIDE]Bag
+		quadrant_bag: [SIDE][SIDE]Bag
 
 		// loops x and y are the index of the lines
-		loop_line_x: for x := 0; x < SIDE_SIZE; x += 1 {
-			loop_line_y: for y := 0; y < SIDE_SIZE; y += 1 {
+		loop_line_x: for x := 0; x < SIDE; x += 1 {
+			loop_line_y: for y := 0; y < SIDE; y += 1 {
 
 				bag := bag_new()
 				savepoint_column_bag := column_bag
-				savepoint_quadrant_bag := quadrant_bag
+				savepoint_quadrant_bag := quadrant_bag // kinda want to remove these on fail runs, somehow
 
 				// loops a and b are the index of the columns
-				loop_line_a: for a := 0; a < SIDE_SIZE; a += 1 {
-					loop_line_b: for b := 0; b < SIDE_SIZE; b += 1 {
+				loop_line_a: for a := 0; a < SIDE; a += 1 {
+					loop_line_b: for b := 0; b < SIDE; b += 1 {
 
 						// this loop will run until a legal value is found or xyab
 						loop_over_bag: for loop_lock := bag.size; loop_lock >= 1; {

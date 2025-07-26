@@ -1,6 +1,8 @@
 package main
 import "core:math/rand"
 
+SUDOKU_SIZE :: 9
+
 Bag :: struct {
 	size:  u8,
 	array: [SUDOKU_SIZE]u8,
